@@ -2,10 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Artwork } from "@/lib/aic";
-import { glowColor, imageUrl } from "@/lib/color";
+import { imageUrl } from "@/lib/color";
 
 // Rough caption height relative to column width, so balancing accounts for it.
 const CAPTION = 0.16;
+
+/** The searched color(s) as a CSS background: solid for one, a diagonal gradient for a pair. */
+function searchPaint(hues: number[]) {
+  const [a, b] = hues.map((h) => `hsl(${h} 80% 60%)`);
+  // Pairs are often near-opposites, and blending opposites passes through
+  // grey, so each color holds solid for a third and the blend (in OKLab,
+  // which stays cleaner than sRGB) is kept to the middle.
+  return b ? `linear-gradient(135deg in oklab, ${a} 0%, ${a} 33%, ${b} 67%, ${b} 100%)` : a;
+}
 
 function columnCount(width: number) {
   if (width < 520) return 1;
@@ -16,6 +25,8 @@ function columnCount(width: number) {
 
 type Props = {
   items: Artwork[];
+  /** The colors these results were searched for; hover borders and glows use them. */
+  hues: number[];
   dimmed: boolean;
   hasMore: boolean;
   loadingMore: boolean;
@@ -23,7 +34,7 @@ type Props = {
   onOpen: (index: number, from: HTMLElement) => void;
 };
 
-export function Gallery({ items, dimmed, hasMore, loadingMore, onLoadMore, onOpen }: Props) {
+export function Gallery({ items, hues, dimmed, hasMore, loadingMore, onLoadMore, onOpen }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(3);
@@ -48,6 +59,8 @@ export function Gallery({ items, dimmed, hasMore, loadingMore, onLoadMore, onOpe
     return out;
   }, [items, cols]);
 
+  const paint = searchPaint(hues);
+
   // Start fetching well before the bottom so scrolling never waits.
   useEffect(() => {
     if (!hasMore) return;
@@ -66,7 +79,7 @@ export function Gallery({ items, dimmed, hasMore, loadingMore, onLoadMore, onOpe
         {columns.map((col, c) => (
           <div key={c} className="flex min-w-0 flex-1 flex-col gap-10">
             {col.map(({ art, index }) => (
-              <Card key={art.id} art={art} delay={(index % 30) * 35} onOpen={(el) => onOpen(index, el)} />
+              <Card key={art.id} art={art} paint={paint} delay={(index % 30) * 35} onOpen={(el) => onOpen(index, el)} />
             ))}
           </div>
         ))}
@@ -85,47 +98,64 @@ export function Gallery({ items, dimmed, hasMore, loadingMore, onLoadMore, onOpe
   );
 }
 
-function Card({ art, delay, onOpen }: { art: Artwork; delay: number; onOpen: (el: HTMLElement) => void }) {
+type CardProps = { art: Artwork; paint: string; delay: number; onOpen: (el: HTMLElement) => void };
+
+function Card({ art, paint, delay, onOpen }: CardProps) {
   const frame = useRef<HTMLDivElement>(null);
   return (
     <button
       type="button"
       onClick={() => onOpen(frame.current!)}
       className="rise group block w-full text-left outline-none"
-      style={{ animationDelay: `${delay}ms`, ["--glow" as string]: glowColor(art.accent, 0.55) }}
+      style={{ animationDelay: `${delay}ms` }}
     >
-      <div
-        ref={frame}
-        className="relative overflow-hidden rounded-sm bg-white/5 shadow-[0_22px_60px_-26px_var(--glow)] transition-[box-shadow,transform] duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_30px_80px_-18px_var(--glow)] group-focus-visible:ring-2 group-focus-visible:ring-white/60"
-        style={{ aspectRatio: `${art.width} / ${art.height}` }}
-      >
-        {art.lqip && (
-          <div
-            aria-hidden
-            className="absolute inset-0 scale-110 bg-cover blur-xl"
-            style={{ backgroundImage: `url(${art.lqip})` }}
-          />
-        )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl(art)}
-          alt={art.alt ?? art.title}
-          loading="lazy"
-          decoding="async"
-          // The museum's image server blocks hotlinked requests that carry a
-          // referrer from another site.
-          referrerPolicy="no-referrer"
-          // A cached image can finish before React hydrates and attaches
-          // onLoad, so check `complete` on mount too.
-          ref={(el) => {
-            if (el?.complete && el.naturalWidth) el.dataset.loaded = "";
-          }}
-          onLoad={(e) => (e.currentTarget.dataset.loaded = "")}
-          // If the image server still refuses, keep the blurred preview
-          // rather than a broken-image icon.
-          onError={(e) => (e.currentTarget.style.visibility = "hidden")}
-          className="relative h-full w-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100"
+      {/* Glow, border and image scale together. Glow and border are layers
+          painted in the searched color(s), since a box-shadow or border
+          can't be a gradient. */}
+      <div className="relative transition-transform duration-500 ease-out group-hover:scale-[1.03] group-focus-visible:scale-[1.03] motion-reduce:transform-none">
+        <div
+          aria-hidden
+          className="absolute inset-x-[8%] top-[18%] -bottom-[7%] opacity-35 blur-2xl transition-opacity duration-500 group-hover:opacity-80 group-focus-visible:opacity-80"
+          style={{ background: paint }}
         />
+        <div
+          aria-hidden
+          className="absolute -inset-[3px] rounded-[5px] opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+          style={{ background: paint }}
+        />
+        <div
+          ref={frame}
+          className="relative overflow-hidden rounded-sm bg-[#0c0c0e]"
+          style={{ aspectRatio: `${art.width} / ${art.height}` }}
+        >
+          {art.lqip && (
+            <div
+              aria-hidden
+              className="absolute inset-0 scale-110 bg-cover blur-xl"
+              style={{ backgroundImage: `url(${art.lqip})` }}
+            />
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl(art)}
+            alt={art.alt ?? art.title}
+            loading="lazy"
+            decoding="async"
+            // The museum's image server blocks hotlinked requests that carry a
+            // referrer from another site.
+            referrerPolicy="no-referrer"
+            // A cached image can finish before React hydrates and attaches
+            // onLoad, so check `complete` on mount too.
+            ref={(el) => {
+              if (el?.complete && el.naturalWidth) el.dataset.loaded = "";
+            }}
+            onLoad={(e) => (e.currentTarget.dataset.loaded = "")}
+            // If the image server still refuses, keep the blurred preview
+            // rather than a broken-image icon.
+            onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+            className="relative h-full w-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100"
+          />
+        </div>
       </div>
       <div className="mt-3 space-y-0.5 px-0.5">
         <h3 className="line-clamp-2 font-serif text-[15px] leading-snug text-white/90 transition-colors group-hover:text-white">

@@ -17,7 +17,9 @@ type Props = {
   collectionSize: number;
 };
 
-type GalleryState = { key: string; items: Artwork[]; total: number; page: number; hasMore: boolean };
+// `hues` are the colors these items were searched for, which can lag the
+// wheel while a new search loads.
+type GalleryState = { key: string; hues: number[]; items: Artwork[]; total: number; page: number; hasMore: boolean };
 type Status = "idle" | "switching" | "more" | "error";
 
 // A second color must be at least this far from the first to be worth pairing.
@@ -79,6 +81,7 @@ export function Explorer({ initialHues, initialType, initialHistogram, initial, 
   });
   const [gallery, setGallery] = useState<GalleryState>(() => ({
     key: initial ? keyOf(initialType, initialHues) : "",
+    hues: initialHues,
     items: initial?.items ?? [],
     total: initial?.total ?? 0,
     page: initial ? 1 : 0,
@@ -129,7 +132,7 @@ export function Explorer({ initialHues, initialType, initialHistogram, initial, 
     try {
       const r = await fetchPage(h, t, 1, c.signal);
       if (keyRef.current !== key) return;
-      setGallery({ key, items: r.items, total: r.total, page: 1, hasMore: r.hasMore });
+      setGallery({ key, hues: h, items: r.items, total: r.total, page: 1, hasMore: r.hasMore });
       setStatus("idle");
     } catch {
       if (!c.signal.aborted) setStatus("error");
@@ -383,6 +386,7 @@ export function Explorer({ initialHues, initialType, initialHistogram, initial, 
         ) : (
           <Gallery
             items={gallery.items}
+            hues={gallery.hues}
             dimmed={status === "switching"}
             hasMore={gallery.hasMore}
             loadingMore={status === "more"}
