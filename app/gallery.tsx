@@ -109,61 +109,63 @@ function Card({ art, paint, delay, onOpen }: CardProps) {
       className="rise group block w-full text-left outline-none"
       style={{ animationDelay: `${delay}ms` }}
     >
-      {/* Glow, border and image scale together. Glow and border are layers
-          painted in the searched color(s), since a box-shadow or border
-          can't be a gradient. */}
-      <div className="relative transition-transform duration-500 ease-out group-hover:scale-[1.03] group-focus-visible:scale-[1.03] motion-reduce:transform-none">
-        <div
-          aria-hidden
-          className="absolute inset-x-[8%] top-[18%] -bottom-[7%] opacity-35 blur-2xl transition-opacity duration-500 group-hover:opacity-80 group-focus-visible:opacity-80"
-          style={{ background: paint }}
-        />
-        <div
-          aria-hidden
-          className="absolute -inset-[3px] rounded-[5px] opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
-          style={{ background: paint }}
-        />
-        <div
-          ref={frame}
-          className="relative overflow-hidden rounded-sm bg-[#0c0c0e]"
-          style={{ aspectRatio: `${art.width} / ${art.height}` }}
-        >
-          {art.lqip && (
-            <div
-              aria-hidden
-              className="absolute inset-0 scale-110 bg-cover blur-xl"
-              style={{ backgroundImage: `url(${art.lqip})` }}
-            />
-          )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl(art)}
-            alt={art.alt ?? art.title}
-            loading="lazy"
-            decoding="async"
-            // The museum's image server blocks hotlinked requests that carry a
-            // referrer from another site.
-            referrerPolicy="no-referrer"
-            // A cached image can finish before React hydrates and attaches
-            // onLoad, so check `complete` on mount too.
-            ref={(el) => {
-              if (el?.complete && el.naturalWidth) el.dataset.loaded = "";
-            }}
-            onLoad={(e) => (e.currentTarget.dataset.loaded = "")}
-            // If the image server still refuses, keep the blurred preview
-            // rather than a broken-image icon.
-            onError={(e) => (e.currentTarget.style.visibility = "hidden")}
-            className="relative h-full w-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100"
+      {/* The image and its caption grow together on hover. */}
+      <div className="transition-transform duration-500 ease-out group-hover:scale-[1.03] group-focus-visible:scale-[1.03] motion-reduce:transform-none">
+        {/* Glow and border are layers painted in the searched color(s), since a
+            box-shadow or border can't be a gradient. */}
+        <div className="relative">
+          <div
+            aria-hidden
+            className="absolute inset-x-[8%] top-[18%] -bottom-[7%] opacity-35 blur-2xl transition-opacity duration-500 group-hover:opacity-80 group-focus-visible:opacity-80"
+            style={{ background: paint }}
           />
+          <div
+            aria-hidden
+            className="absolute -inset-[3px] rounded-[5px] opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+            style={{ background: paint }}
+          />
+          <div
+            ref={frame}
+            className="relative overflow-hidden rounded-sm bg-[#0c0c0e]"
+            style={{ aspectRatio: `${art.width} / ${art.height}` }}
+          >
+            {art.lqip && (
+              <div
+                aria-hidden
+                className="absolute inset-0 scale-110 bg-cover blur-xl"
+                style={{ backgroundImage: `url(${art.lqip})` }}
+              />
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl(art)}
+              alt={art.alt ?? art.title}
+              loading="lazy"
+              decoding="async"
+              // The museum's image server blocks hotlinked requests that carry a
+              // referrer from another site.
+              referrerPolicy="no-referrer"
+              // A cached image can finish before React hydrates and attaches
+              // onLoad, so check `complete` on mount too.
+              ref={(el) => {
+                if (el?.complete && el.naturalWidth) el.dataset.loaded = "";
+              }}
+              onLoad={(e) => (e.currentTarget.dataset.loaded = "")}
+              // If the image server still refuses, keep the blurred preview
+              // rather than a broken-image icon.
+              onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+              className="relative h-full w-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100"
+            />
+          </div>
         </div>
-      </div>
-      <div className="mt-3 space-y-0.5 px-0.5">
-        <h3 className="line-clamp-2 font-serif text-[15px] leading-snug text-white/90 transition-colors group-hover:text-white">
-          {art.title}
-        </h3>
-        <p className="truncate text-xs text-white/45">
-          {[art.artist, art.date].filter(Boolean).join(" · ") || art.type}
-        </p>
+        <div className="mt-3 space-y-0.5 px-0.5">
+          <h3 className="line-clamp-2 font-serif text-[15px] leading-snug text-white/90 transition-colors group-hover:text-white">
+            {art.title}
+          </h3>
+          <p className="truncate text-xs text-white/45">
+            {[art.artist, art.date].filter(Boolean).join(" · ") || art.type}
+          </p>
+        </div>
       </div>
     </button>
   );
