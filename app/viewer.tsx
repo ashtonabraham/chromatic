@@ -98,7 +98,7 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
       role="dialog"
       aria-modal="true"
       aria-label={art.title}
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#060607]/90 backdrop-blur-2xl md:overflow-hidden"
+      className="fixed inset-0 z-50 cursor-pointer overflow-y-auto bg-[#060607]/90 backdrop-blur-2xl md:overflow-hidden"
       style={{ backgroundImage: `radial-gradient(900px 600px at 35% 45%, ${glowColor(art.accent, 0.22)}, transparent 70%)` }}
       onClick={(e) => e.target === e.currentTarget && close()}
     >
@@ -110,7 +110,7 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
           <div
             ref={frame}
             key={art.id}
-            className={`relative overflow-hidden rounded-sm ${origin && art.id === openedId.current ? "" : "fade-in"}`}
+            className={`relative cursor-auto overflow-hidden rounded-sm ${origin && art.id === openedId.current ? "" : "fade-in"}`}
             style={{
               aspectRatio: `${art.width} / ${art.height}`,
               width: `min(100%, calc(var(--avail) * ${ratio}))`,
@@ -133,7 +133,7 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
           </div>
         </div>
 
-        <aside key={art.id} className="fade-in flex flex-col gap-6 border-white/10 px-6 pb-10 md:overflow-y-auto md:border-l md:bg-black/25 md:px-8 md:py-10">
+        <aside key={art.id} className="fade-in flex cursor-auto flex-col gap-6 border-white/10 px-6 pb-10 md:overflow-y-auto md:border-l md:bg-black/25 md:px-8 md:py-10">
           <div className="hidden items-center justify-between md:flex md:pr-14">
             <Nav index={index} total={items.length} onNavigate={onNavigate} />
           </div>
