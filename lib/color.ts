@@ -10,6 +10,31 @@ export const HISTOGRAM_STEP = 5;
 export const imageUrl = (art: { imageId: string; width: number }, width: 843 | 1686 = 843) =>
   `${IIIF}/${art.imageId}/full/${Math.min(width, art.width)},/0/default.jpg`;
 
+// The largest image the museum serves publicly: 3000px on the longest side.
+const MAX_DOWNLOAD = 3000;
+
+/**
+ * Download sources, best first. The image server's rules are undocumented and
+ * uneven: it refuses some size syntaxes for the same output (`,3000` works
+ * where the identical `1569,` doesn't) and sometimes redirects to a smaller
+ * cached size (asking for 1686 can return 843). So the caller should check
+ * what it actually got against downloadSize() and fall through.
+ */
+export function downloadUrls(art: { imageId: string; width: number; height: number }) {
+  const base = `${IIIF}/${art.imageId}/full`;
+  const fit = `${base}/!${MAX_DOWNLOAD},${MAX_DOWNLOAD}/0/default.jpg`;
+  // Originals within the limit: asking for their exact width returns them as-is.
+  const original = `${base}/${art.width},/0/default.jpg`;
+  const urls = Math.max(art.width, art.height) <= MAX_DOWNLOAD ? [original, fit] : [fit];
+  return [...urls, imageUrl(art, 1686), imageUrl(art)];
+}
+
+/** Pixel size of the best download, for labeling the button. */
+export function downloadSize(art: { width: number; height: number }) {
+  const scale = Math.min(1, MAX_DOWNLOAD / Math.max(art.width, art.height));
+  return { width: Math.round(art.width * scale), height: Math.round(art.height * scale) };
+}
+
 /** Queries snap to 5° so nearby drags share cache entries. */
 export const snapHue = (h: number) => (Math.round(h / HISTOGRAM_STEP) * HISTOGRAM_STEP) % 360;
 

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Artwork } from "@/lib/aic";
 import { glowColor, hueName, imageUrl } from "@/lib/color";
 import { hueDistance } from "@/lib/palette";
+import { DownloadButton } from "./download";
 
 type Props = {
   items: Artwork[];
@@ -204,6 +205,8 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
               )}
             </section>
           )}
+
+          <DownloadButton art={art} />
 
           <a
             href={`https://www.artic.edu/artworks/${art.id}`}
