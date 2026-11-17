@@ -23,7 +23,6 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
   const art = items[index];
   const overlay = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
-  const closeBtn = useRef<HTMLButtonElement>(null);
   const [hiResLoaded, setHiResLoaded] = useState<number | null>(null);
   // The work that was clicked grows from its card; ones arrowed to fade in.
   const openedId = useRef(art.id);
@@ -52,7 +51,11 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
   // Focus, scroll lock, and returning focus to wherever it was on close.
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    closeBtn.current?.focus();
+    // There's a close button in the desktop control row and a pinned one on
+    // phones; focus whichever is showing.
+    [...overlay.current!.querySelectorAll<HTMLButtonElement>('button[aria-label="Close"]')]
+      .find((b) => b.getClientRects().length > 0)
+      ?.focus();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -133,105 +136,105 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
           </div>
         </div>
 
-        <aside key={art.id} className="fade-in flex cursor-auto flex-col gap-6 border-white/10 px-6 pb-10 md:overflow-y-auto md:border-l md:bg-black/25 md:px-8 md:py-10">
-          <div className="hidden items-center justify-between md:flex md:pr-14">
+        {/* The control row sits outside the keyed panel so it isn't rebuilt
+            on every arrow press, which would drop keyboard focus. */}
+        <div className="flex cursor-auto flex-col border-white/10 md:overflow-y-auto md:border-l md:bg-black/25">
+          <div className="hidden items-center justify-between px-8 pt-10 md:flex">
             <Nav index={index} total={items.length} onNavigate={onNavigate} />
+            <CloseButton onClick={close} />
           </div>
 
-          <div>
-            <h2 className="font-serif text-3xl leading-tight text-balance">{art.title}</h2>
-            {art.artistDisplay && <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-white/60">{art.artistDisplay}</p>}
-          </div>
+          <aside key={art.id} className="fade-in flex flex-col gap-6 px-6 pb-6 md:px-8 md:pt-6 md:pb-10">
 
-          <dl className="space-y-3 text-sm">
-            {facts.map(([k, v]) => (
-              <div key={k}>
-                <dt className="text-[11px] tracking-[0.14em] text-white/35 uppercase">{k}</dt>
-                <dd className="mt-0.5 text-white/80">{v}</dd>
-              </div>
-            ))}
-          </dl>
+            <div>
+              <h2 className="font-serif text-3xl leading-tight text-balance">{art.title}</h2>
+              {art.artistDisplay && <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-white/60">{art.artistDisplay}</p>}
+            </div>
 
-          {art.palette.length > 0 && (
-            <section aria-label="Palette" className="space-y-3">
-              <h3 className="text-[11px] tracking-[0.14em] text-white/35 uppercase">Palette</h3>
-              {/* Each color's width is its share of the work. Vivid ones
-                  are searchable; greys and browns are shown but inert. */}
-              <div className="flex h-11 overflow-hidden rounded-md ring-1 ring-white/10">
-                {art.palette.map((s, i) => {
-                  const bg = `rgb(${s.rgb.join(" ")})`;
-                  return s.vivid ? (
+            <dl className="space-y-3 text-sm">
+              {facts.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-[11px] tracking-[0.14em] text-white/35 uppercase">{k}</dt>
+                  <dd className="mt-0.5 text-white/80">{v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {art.palette.length > 0 && (
+              <section aria-label="Palette" className="space-y-3">
+                <h3 className="text-[11px] tracking-[0.14em] text-white/35 uppercase">Palette</h3>
+                {/* Each color's width is its share of the work. Vivid ones
+                    are searchable; greys and browns are shown but inert. */}
+                <div className="flex h-11 overflow-hidden rounded-md ring-1 ring-white/10">
+                  {art.palette.map((s, i) => {
+                    const bg = `rgb(${s.rgb.join(" ")})`;
+                    return s.vivid ? (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => onExploreHues([s.hue])}
+                        title={`Search ${hueName(s.hue).toLowerCase()} · ${s.weight}% of this work`}
+                        aria-label={`Search ${hueName(s.hue).toLowerCase()}, ${s.weight}% of this work`}
+                        className="relative min-w-3 transition-[flex-grow] duration-300 outline-none hover:grow-[1.4] focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-white"
+                        style={{ flexGrow: s.weight, backgroundColor: bg }}
+                      />
+                    ) : (
+                      <span key={i} className="min-w-3" style={{ flexGrow: s.weight, backgroundColor: bg }} />
+                    );
+                  })}
+                </div>
+                {vivid.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {pairing && (
+                      <button
+                        type="button"
+                        onClick={() => onExploreHues(pairing)}
+                        className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-sm ring-1 ring-white/20 transition hover:bg-white/5 hover:ring-white/40"
+                      >
+                        <span className="flex -space-x-1.5">
+                          {pairing.map((h) => (
+                            <span key={h} className="size-5 rounded-full ring-2 ring-black/50" style={{ backgroundColor: `hsl(${h} 65% 50%)` }} />
+                          ))}
+                        </span>
+                        More {pairing.map((h) => hueName(h).toLowerCase()).join(" & ")}
+                      </button>
+                    )}
                     <button
-                      key={i}
                       type="button"
-                      onClick={() => onExploreHues([s.hue])}
-                      title={`Search ${hueName(s.hue).toLowerCase()} · ${s.weight}% of this work`}
-                      aria-label={`Search ${hueName(s.hue).toLowerCase()}, ${s.weight}% of this work`}
-                      className="relative min-w-3 transition-[flex-grow] duration-300 outline-none hover:grow-[1.4] focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-white"
-                      style={{ flexGrow: s.weight, backgroundColor: bg }}
-                    />
-                  ) : (
-                    <span key={i} className="min-w-3" style={{ flexGrow: s.weight, backgroundColor: bg }} />
-                  );
-                })}
-              </div>
-              {vivid.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {pairing && (
-                    <button
-                      type="button"
-                      onClick={() => onExploreHues(pairing)}
+                      onClick={() => onExploreHues([vivid[0].hue])}
                       className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-sm ring-1 ring-white/20 transition hover:bg-white/5 hover:ring-white/40"
                     >
-                      <span className="flex -space-x-1.5">
-                        {pairing.map((h) => (
-                          <span key={h} className="size-5 rounded-full ring-2 ring-black/50" style={{ backgroundColor: `hsl(${h} 65% 50%)` }} />
-                        ))}
-                      </span>
-                      More {pairing.map((h) => hueName(h).toLowerCase()).join(" & ")}
+                      <span className="size-5 rounded-full" style={{ backgroundColor: `hsl(${vivid[0].hue} 65% 50%)` }} />
+                      More {hueName(vivid[0].hue).toLowerCase()}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onExploreHues([vivid[0].hue])}
-                    className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-sm ring-1 ring-white/20 transition hover:bg-white/5 hover:ring-white/40"
-                  >
-                    <span className="size-5 rounded-full" style={{ backgroundColor: `hsl(${vivid[0].hue} 65% 50%)` }} />
-                    More {hueName(vivid[0].hue).toLowerCase()}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-white/40">A muted palette: no single color stands out.</p>
-              )}
-            </section>
-          )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/40">A muted palette: no single color stands out.</p>
+                )}
+              </section>
+            )}
 
-          <DownloadButton art={art} />
+            <DownloadButton art={art} />
 
-          <a
-            href={`https://www.artic.edu/artworks/${art.id}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-white/50 underline decoration-white/20 underline-offset-4 hover:text-white/80"
-          >
-            View at the Art Institute of Chicago ↗
-          </a>
+            <a
+              href={`https://www.artic.edu/artworks/${art.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-white/50 underline decoration-white/20 underline-offset-4 hover:text-white/80"
+            >
+              View at the Art Institute of Chicago ↗
+            </a>
 
-          <div className="mt-auto flex items-center justify-between md:hidden">
+          </aside>
+
+          <div className="mt-auto flex justify-center px-6 pb-10 md:hidden">
             <Nav index={index} total={items.length} onNavigate={onNavigate} />
           </div>
-        </aside>
+        </div>
       </div>
 
-      <button
-        ref={closeBtn}
-        type="button"
-        onClick={close}
-        aria-label="Close"
-        className="fixed top-4 right-4 grid size-10 place-items-center rounded-full bg-black/50 text-xl text-white/80 ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 hover:text-white md:top-[30px] md:right-8"
-      >
-        ×
-      </button>
+      {/* On phones the panel scrolls under the image, so close stays pinned. */}
+      <CloseButton onClick={close} className="fixed top-4 right-4 size-10 bg-black/50 backdrop-blur md:hidden" />
     </div>
   );
 }
@@ -239,18 +242,30 @@ export function Viewer({ items, index, origin, onClose, onNavigate, onExploreHue
 function Nav({ index, total, onNavigate }: { index: number; total: number; onNavigate: (i: number) => void }) {
   const btn = "grid size-9 place-items-center rounded-full ring-1 ring-white/15 transition hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent";
   return (
-    <>
-      <span className="text-xs text-white/40 tabular-nums">
+    <div className="flex items-center gap-2">
+      <button type="button" className={btn} disabled={index === 0} onClick={() => onNavigate(index - 1)} aria-label="Previous work">
+        ←
+      </button>
+      {/* Fixed width so the arrows don't shift as the numbers change. */}
+      <span className="min-w-16 text-center text-xs text-white/40 tabular-nums">
         {index + 1} / {total}
       </span>
-      <div className="flex gap-2">
-        <button type="button" className={btn} disabled={index === 0} onClick={() => onNavigate(index - 1)} aria-label="Previous work">
-          ←
-        </button>
-        <button type="button" className={btn} disabled={index === total - 1} onClick={() => onNavigate(index + 1)} aria-label="Next work">
-          →
-        </button>
-      </div>
-    </>
+      <button type="button" className={btn} disabled={index === total - 1} onClick={() => onNavigate(index + 1)} aria-label="Next work">
+        →
+      </button>
+    </div>
+  );
+}
+
+function CloseButton({ onClick, className = "size-9" }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Close"
+      className={`grid place-items-center rounded-full text-xl text-white/80 ring-1 ring-white/15 transition hover:bg-white/10 hover:text-white ${className}`}
+    >
+      ×
+    </button>
   );
 }
